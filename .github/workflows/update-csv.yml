@@ -33,6 +33,12 @@ jobs:
             echo "GH_PAT is set and available to the workflow."
           fi
 
+      - name: Set git remote to use PAT
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/evni0812/energyprices
+
       - name: Show git remote and user
         run: |
           git remote -v
@@ -47,5 +53,4 @@ jobs:
           git config --global user.email 'github-actions@github.com'
           git add output/
           git commit -m 'Update CSV and log [skip ci]' || echo "No changes to commit"
-          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/evni0812/energyprices
           git push origin HEAD:main
