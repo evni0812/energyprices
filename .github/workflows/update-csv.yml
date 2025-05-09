@@ -33,6 +33,12 @@ jobs:
             echo "GH_PAT is set and available to the workflow."
           fi
 
+      - name: Show git remote and user
+        run: |
+          git remote -v
+          git config --get user.name
+          git config --get user.email
+
       - name: Commit and push CSV and log
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
