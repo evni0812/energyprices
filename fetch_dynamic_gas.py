@@ -24,26 +24,6 @@ def get_output_dir() -> str:
         print(f"Output directory: {output_dir}")
         return output_dir
 
-def get_energy_tax_rate(timestamp: datetime) -> float:
-    """
-    Return the appropriate energy tax rate for gas based on the year.
-    
-    Args:
-        timestamp: The datetime for which to get the tax rate
-        
-    Returns:
-        float: The energy tax rate for that year (including VAT)
-    """
-    year = timestamp.year
-    
-    if year == 2024:
-        return 0.70544
-    elif year == 2025:
-        return 0.69957
-    else:
-        # Default to the latest known rate if we don't have data for this year
-        return 0.69957
-
 def fetch_ez_gas_prices():
     """Fetch gas prices from EnergyZero API and save them to a JSON file."""
     # Set time range from 2023 till today
@@ -96,23 +76,14 @@ def fetch_ez_gas_prices():
                 # Get original price (already includes VAT)
                 original_price = item['price']
                 
-                # Get energy tax rate based on year (already includes VAT)
-                energy_tax = get_energy_tax_rate(timestamp)
-                
-                # Procurement costs (already includes VAT)
-                procurement_costs = 0.05911
-                
-                # Calculate total price
-                total_price = original_price + energy_tax + procurement_costs
-                
                 # Create price entry
                 price_entry = {
                     'time': timestamp.isoformat(),
-                    'price': total_price,
+                    'price': original_price,
                     'breakdown': {
                         'base_price': original_price,
-                        'energy_tax': energy_tax,
-                        'procurement_costs': procurement_costs
+                        'energy_tax': 0.0,
+                        'procurement_costs': 0.0
                     }
                 }
                 
