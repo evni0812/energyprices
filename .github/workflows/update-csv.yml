@@ -33,13 +33,13 @@ jobs:
             echo "GH_PAT is set and available to the workflow."
           fi
 
-      - name: Commit and push CSV
+      - name: Commit and push CSV and log
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
-          git add output/*.csv
-          git commit -m 'Update CSV [skip ci]' || echo "No changes to commit"
-          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
-          git push origin HEAD:${{ github.ref_name }}
+          git add output/
+          git commit -m 'Update CSV and log [skip ci]' || echo "No changes to commit"
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/evni0812/energyprices
+          git push origin HEAD:main
