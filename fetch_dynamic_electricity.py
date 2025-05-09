@@ -21,24 +21,6 @@ def get_output_dir() -> str:
             os.makedirs(output_dir)
         return output_dir
 
-def calculate_energy_tax_rate(timestamp):
-    """Calculate energy tax rate based on timestamp."""
-    year = timestamp.year
-    
-    # Energy tax rates per year (simplified version)
-    tax_rates = {
-        2023: 0.12599,
-        2024: 0.10880,
-        2025: 0.10154,  
-        2026: 0.10154, 
-    }
-    
-    # Use most recent year if the year is not in the dictionary
-    if year not in tax_rates:
-        year = max(tax_rates.keys())
-    
-    return tax_rates[year]
-
 def fetch_energyzero_prices(start_date, end_date):
     """
     Fetch energy prices from the EnergyZero API.
@@ -270,17 +252,14 @@ def fetch_entsoe_prices():
     print("Calculating price breakdown...")
     all_prices['base_price'] = all_prices['price']
     
-    # Add energy tax (estimated)
-    all_prices['energy_tax'] = all_prices['time'].apply(calculate_energy_tax_rate)
-    
     # Add procurement costs
     all_prices['procurement_costs'] = 0.04  # Simplified procurement costs
 
     # Calculate VAT (21% on all components)
-    all_prices['vat'] = (all_prices['base_price'] + all_prices['energy_tax'] + all_prices['procurement_costs']) * 0.21
+    all_prices['vat'] = (all_prices['base_price'] + all_prices['procurement_costs']) * 0.21
     
     # Calculate total price (including VAT)
-    all_prices['total_price'] = all_prices['base_price'] + all_prices['energy_tax'] + all_prices['procurement_costs'] + all_prices['vat']
+    all_prices['total_price'] = all_prices['base_price'] + all_prices['procurement_costs'] + all_prices['vat']
     
     # Convert datetime objects to strings to make them JSON serializable
     all_prices['time'] = all_prices['time'].dt.strftime('%Y-%m-%dT%H:%M:%S%z')
@@ -308,7 +287,6 @@ def fetch_entsoe_prices():
             'price': item['total_price'],  # Gebruik total_price als de hoofdprijs
             'breakdown': {
                 'base_price': item['base_price'],  # Basis prijs zonder belastingen
-                'energy_tax': item.get('energy_tax', 0),  # Energiebelasting
                 'procurement_costs': item.get('procurement_costs', 0),  # Inkoopkosten
                 'vat': item.get('vat', 0)  # BTW (21%)
             }
