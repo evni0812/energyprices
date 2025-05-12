@@ -39,6 +39,11 @@ jobs:
         run: |
           git remote set-url origin https://x-access-token:${GH_PAT}@github.com/evni0812/energyprices
 
+      - name: Set git user config
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+
       - name: Show git remote and user
         run: |
           git remote -v
@@ -49,8 +54,6 @@ jobs:
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
           git add output/
           git commit -m 'Update CSV and log [skip ci]' || echo "No changes to commit"
           git push origin HEAD:main
