@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+ENV/
+env/
+venv.bak/
+.env
+
+# IDE specific
+.cursor/
+.idea/
+.vscode/
+
+# Data files - ignoring all files starting with data_
+data_*
+
+# OS specific
+.DS_Store
+Thumbs.db 
