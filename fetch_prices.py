@@ -7,8 +7,8 @@ from datetime import datetime
 import hashlib
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
-PROCUREMENT_COSTS_ELEC = 0.04 * 1.21
-PROCUREMENT_COSTS_GAS = 0.05911 * 1.21
+PROCUREMENT_COSTS_ELEC = 0.04840
+PROCUREMENT_COSTS_GAS = 0.05911
 
 # Originele data elektriciteit (jan-21 t/m mar-25)
 ORIG_ELEC = [
