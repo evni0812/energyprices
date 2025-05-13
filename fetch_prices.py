@@ -115,6 +115,26 @@ def main():
     Haal CBS-data, kale prijzen en schrijf maandgemiddelden naar CSV's.
     Vergelijk CBS- en dynamische tarieven in één bestand.
     """
+    # Define helper function for date comparison
+    def month_gt_mar25(date_str):
+        try:
+            # Check the format of the string
+            if isinstance(date_str, str):
+                if len(date_str) == 6 and '-' in date_str:  # Format like 'apr-25' or 'Apr-25'
+                    # Zorg ervoor dat de maand lowercase is voor consistentie
+                    if not date_str[0].islower():
+                        date_str = date_str[0].lower() + date_str[1:]
+                    dt = datetime.strptime(date_str, '%b-%y')
+                elif len(date_str) == 7 and '-' in date_str:  # Format like '2025-04'
+                    dt = datetime.strptime(date_str, '%Y-%m')
+                else:
+                    return False
+            else:
+                return False
+            return dt > datetime(2025, 3, 1)
+        except Exception:
+            return False
+    
     print("[INFO] Ophalen CBS-tarieven...")
     cbs_rates = get_cbs_rates()
     print(f"[INFO] {len(cbs_rates)} CBS-maanden opgehaald.")
@@ -167,16 +187,15 @@ def main():
     # Merge pipeline data
     pipeline = cbs_df.merge(anwb_elec, on='DATE', how='outer').merge(anwb_gas, on='DATE', how='outer')
     pipeline = pipeline.sort_values('DATE').reset_index(drop=True)
-    # Selecteer alleen maanden > mar-25
-    def month_gt_mar25(date_str):
-        try:
-            dt = datetime.strptime(date_str, '%b-%y') if '-' in date_str else datetime.strptime(date_str, '%Y-%m')
-        except:
-            return False
-        return dt > datetime(2025, 3, 1)
+    
     # Pipeline data: alles na mar-25, met mooie maandnotatie
-    pipeline['DATE'] = pipeline['DATE'].apply(lambda d: datetime.strptime(d, '%Y-%m').strftime('%b-%y') if isinstance(d, str) and '-' not in d else d)
+    pipeline['DATE'] = pipeline['DATE'].apply(
+        lambda d: datetime.strptime(d, '%Y-%m').strftime('%b-%y').lower() 
+        if isinstance(d, str) and len(d) == 7 and '-' in d and d[4] == '-'  # Format like '2025-04'
+        else d
+    )
     pipeline = pipeline[pipeline['DATE'].apply(month_gt_mar25)]
+
     # Combineer origineel + pipeline
     compare = pd.concat([orig_elec_df.join(orig_gas_df.set_index('DATE'), on='DATE', rsuffix='_gas').iloc[:, :5], pipeline], ignore_index=True, sort=False)
     # Schrijf naar CSV
