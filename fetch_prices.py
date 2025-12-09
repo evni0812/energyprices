@@ -7,8 +7,37 @@ from datetime import datetime
 import hashlib
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
-PROCUREMENT_COSTS_ELEC = 0.04840
-PROCUREMENT_COSTS_GAS = 0.05911
+
+
+def get_last_known_month(csv_path):
+    """
+    Lees de laatst bekende maand uit een bestaande CSV.
+    Returns datetime of None als bestand niet bestaat.
+    """
+    if not os.path.exists(csv_path):
+        return None
+    try:
+        df = pd.read_csv(csv_path)
+        if 'month' not in df.columns or df.empty:
+            return None
+        last_month = df['month'].iloc[-1]  # Format: '2025-11'
+        return datetime.strptime(last_month, '%Y-%m')
+    except Exception as e:
+        print(f"[WARN] Kon laatst bekende maand niet lezen uit {csv_path}: {e}")
+        return None
+
+
+def load_existing_data(csv_path):
+    """
+    Laad bestaande maanddata uit CSV.
+    Returns DataFrame of lege DataFrame.
+    """
+    if not os.path.exists(csv_path):
+        return pd.DataFrame(columns=['month', 'total_price'])
+    try:
+        return pd.read_csv(csv_path)
+    except Exception:
+        return pd.DataFrame(columns=['month', 'total_price'])
 
 # Originele data elektriciteit (jan-21 t/m mar-25)
 ORIG_ELEC = [
@@ -64,34 +93,17 @@ def get_monthly_avg(df, value_col='price'):
     return df.groupby('month')[value_col].mean().reset_index()
 
 
-def build_monthly_csv(df_monthly, cbs_rates, procurement_costs, type_):
+def build_monthly_csv(df_monthly):
     """
-    Combineer kale maandgemiddelden met CBS-tax en procurement_costs.
-    type_ = 'electricity' of 'gas'
-    Geeft DataFrame met kolommen: month, base_price, energy_tax, procurement_costs, total_price
+    Maak maandelijkse CSV van all-in prijzen (ANWB allInPrijs bevat al alles).
+    Geeft DataFrame met kolommen: month, total_price
     """
     rows = []
     for _, row in df_monthly.iterrows():
         month = row['month']
-        base_price = row['price']
-        # Zoek juiste CBS rate
-        cbs = next((r for r in cbs_rates if r['period'] == month), None)
-        if not cbs:
-            print(f"[WARN] Geen CBS-data voor maand {month}, overslaan.")
-            continue
-        if type_ == 'electricity':
-            energy_tax = cbs.get('energy_tax')
-        else:
-            energy_tax = cbs.get('gas_energy_tax')
-        if energy_tax is None:
-            print(f"[WARN] Geen energiebelasting voor {type_} in maand {month}, overslaan.")
-            continue
-        total_price = base_price + energy_tax + procurement_costs
+        total_price = row['price']  # allInPrijs is al inclusief alles
         rows.append({
             'month': month,
-            'base_price': round(base_price, 5),
-            'energy_tax': round(energy_tax, 5),
-            'procurement_costs': round(procurement_costs, 5),
             'total_price': round(total_price, 5)
         })
     return pd.DataFrame(rows)
@@ -135,42 +147,79 @@ def main():
         except Exception:
             return False
     
-    print("[INFO] Ophalen CBS-tarieven...")
-    cbs_rates = get_cbs_rates()
-    print(f"[INFO] {len(cbs_rates)} CBS-maanden opgehaald.")
-
-    print("[INFO] Ophalen kale elektriciteitsprijzen...")
-    start_jan21 = datetime(2021, 1, 1)
-    elec_df = get_dynamic_electricity_prices(start_date=start_jan21)
-    if elec_df is None or elec_df.empty:
-        print("[ERROR] Geen elektriciteitsprijzen gevonden!")
-        return
-    print(f"[INFO] {len(elec_df)} elektriciteitsprijzen opgehaald.")
-
-    print("[INFO] Ophalen kale gasprijzen...")
-    gas_df = get_dynamic_gas_prices(start_date=start_jan21)
-    if gas_df is None or gas_df.empty:
-        print("[ERROR] Geen gasprijzen gevonden!")
-        return
-    print(f"[INFO] {len(gas_df)} gasprijzen opgehaald.")
-
-    # Maandgemiddelden
-    elec_monthly = get_monthly_avg(elec_df)
-    gas_monthly = get_monthly_avg(gas_df)
-
-    # Combineer met CBS en procurement_costs
-    elec_out = build_monthly_csv(elec_monthly, cbs_rates, PROCUREMENT_COSTS_ELEC, 'electricity')
-    gas_out = build_monthly_csv(gas_monthly, cbs_rates, PROCUREMENT_COSTS_GAS, 'gas')
-
     ensure_output_dir()
     elec_path = os.path.join(OUTPUT_DIR, 'monthly_electricity_prices.csv')
     gas_path = os.path.join(OUTPUT_DIR, 'monthly_gas_prices.csv')
+    
+    # CBS altijd volledig ophalen (korte call, data kan achteraf veranderen)
+    print("[INFO] Ophalen CBS-tarieven (altijd volledig)...")
+    cbs_rates = get_cbs_rates()
+    print(f"[INFO] {len(cbs_rates)} CBS-maanden opgehaald.")
+
+    # Bepaal vanaf welke maand we ANWB data moeten ophalen
+    last_elec_month = get_last_known_month(elec_path)
+    last_gas_month = get_last_known_month(gas_path)
+    
+    # Laad bestaande data
+    existing_elec = load_existing_data(elec_path)
+    existing_gas = load_existing_data(gas_path)
+    
+    # Bepaal startdatum voor nieuwe data (begin van de laatst bekende maand, zodat die maand wordt bijgewerkt)
+    if last_elec_month:
+        elec_start = last_elec_month.replace(day=1)
+        print(f"[INFO] Elektriciteit: laatste bekende maand is {last_elec_month.strftime('%Y-%m')}, ophalen vanaf {elec_start.strftime('%Y-%m')}")
+    else:
+        elec_start = datetime(2021, 1, 1)
+        print("[INFO] Elektriciteit: geen bestaande data, ophalen vanaf 2021-01")
+    
+    if last_gas_month:
+        gas_start = last_gas_month.replace(day=1)
+        print(f"[INFO] Gas: laatste bekende maand is {last_gas_month.strftime('%Y-%m')}, ophalen vanaf {gas_start.strftime('%Y-%m')}")
+    else:
+        gas_start = datetime(2021, 1, 1)
+        print("[INFO] Gas: geen bestaande data, ophalen vanaf 2021-01")
+
+    # Ophalen ANWB elektriciteit (alleen nieuwe data)
+    print(f"[INFO] Ophalen all-in elektriciteitsprijzen (ANWB) vanaf {elec_start.strftime('%Y-%m')}...")
+    elec_df = get_dynamic_electricity_prices(start_date=elec_start)
+    if elec_df is None or elec_df.empty:
+        print("[WARN] Geen nieuwe elektriciteitsprijzen gevonden!")
+        elec_out = existing_elec
+    else:
+        print(f"[INFO] {len(elec_df)} elektriciteitsprijzen opgehaald.")
+        elec_monthly = get_monthly_avg(elec_df)
+        new_elec = build_monthly_csv(elec_monthly)
+        # Merge: bestaande data (excl. bijgewerkte maanden) + nieuwe data
+        if not existing_elec.empty:
+            cutoff_month = elec_start.strftime('%Y-%m')
+            existing_elec = existing_elec[existing_elec['month'] < cutoff_month]
+        elec_out = pd.concat([existing_elec, new_elec], ignore_index=True).drop_duplicates(subset='month', keep='last')
+        elec_out = elec_out.sort_values('month').reset_index(drop=True)
+
+    # Ophalen ANWB gas (alleen nieuwe data)
+    print(f"[INFO] Ophalen all-in gasprijzen (ANWB) vanaf {gas_start.strftime('%Y-%m')}...")
+    gas_df = get_dynamic_gas_prices(start_date=gas_start)
+    if gas_df is None or gas_df.empty:
+        print("[WARN] Geen nieuwe gasprijzen gevonden!")
+        gas_out = existing_gas
+    else:
+        print(f"[INFO] {len(gas_df)} gasprijzen opgehaald.")
+        gas_monthly = get_monthly_avg(gas_df)
+        new_gas = build_monthly_csv(gas_monthly)
+        # Merge: bestaande data (excl. bijgewerkte maanden) + nieuwe data
+        if not existing_gas.empty:
+            cutoff_month = gas_start.strftime('%Y-%m')
+            existing_gas = existing_gas[existing_gas['month'] < cutoff_month]
+        gas_out = pd.concat([existing_gas, new_gas], ignore_index=True).drop_duplicates(subset='month', keep='last')
+        gas_out = gas_out.sort_values('month').reset_index(drop=True)
+
+    # Schrijf naar CSV
     elec_out.to_csv(elec_path, index=False)
     gas_out.to_csv(gas_path, index=False)
     print(f"[INFO] CSV's geschreven naar {elec_path} en {gas_path}")
 
     # --- Vergelijkingstabel maken ---
-    # Originele dataframes
+    # Originele dataframes (historische data)
     orig_elec_df = pd.DataFrame(ORIG_ELEC, columns=["DATE", "CBS stroom", "ANWB stroom"])
     orig_gas_df = pd.DataFrame(ORIG_GAS, columns=["DATE", "CBS gas", "ANWB gas"])
     # Pipeline dataframes (vanaf apr-25)
@@ -182,8 +231,8 @@ def main():
         }
         for r in cbs_rates
     ])
-    anwb_elec = elec_out[['month', 'total_price']].rename(columns={'month': 'DATE', 'total_price': 'ANWB stroom'})
-    anwb_gas = gas_out[['month', 'total_price']].rename(columns={'month': 'DATE', 'total_price': 'ANWB gas'})
+    anwb_elec = elec_out.rename(columns={'month': 'DATE', 'total_price': 'ANWB stroom'})
+    anwb_gas = gas_out.rename(columns={'month': 'DATE', 'total_price': 'ANWB gas'})
     # Merge pipeline data
     pipeline = cbs_df.merge(anwb_elec, on='DATE', how='outer').merge(anwb_gas, on='DATE', how='outer')
     pipeline = pipeline.sort_values('DATE').reset_index(drop=True)
@@ -195,6 +244,9 @@ def main():
         else d
     )
     pipeline = pipeline[pipeline['DATE'].apply(month_gt_mar25)]
+    
+    # Filter: alleen rijen waar ALLE data beschikbaar is (CBS komt vaak als laatste)
+    pipeline = pipeline.dropna(subset=['CBS stroom', 'ANWB stroom', 'CBS gas', 'ANWB gas'])
 
     # Combineer origineel + pipeline
     compare = pd.concat([orig_elec_df.join(orig_gas_df.set_index('DATE'), on='DATE', rsuffix='_gas').iloc[:, :5], pipeline], ignore_index=True, sort=False)

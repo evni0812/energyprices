@@ -1,0 +1,536 @@
+{
+  "last_updated": "2025-12-09T07:33:48.378699",
+  "rates": [
+    {
+      "period": "2021-01",
+      "base_rate": 0.0661,
+      "energy_tax": 0.11408,
+      "total": 0.18018,
+      "gas_base_rate": 0.2781,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.69986
+    },
+    {
+      "period": "2021-02",
+      "base_rate": 0.0657,
+      "energy_tax": 0.11408,
+      "total": 0.17978,
+      "gas_base_rate": 0.2763,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.69806
+    },
+    {
+      "period": "2021-03",
+      "base_rate": 0.0657,
+      "energy_tax": 0.11408,
+      "total": 0.17978,
+      "gas_base_rate": 0.2752,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.69696
+    },
+    {
+      "period": "2021-04",
+      "base_rate": 0.0659,
+      "energy_tax": 0.11408,
+      "total": 0.17998,
+      "gas_base_rate": 0.2754,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.69716
+    },
+    {
+      "period": "2021-05",
+      "base_rate": 0.0663,
+      "energy_tax": 0.11408,
+      "total": 0.18037999999999998,
+      "gas_base_rate": 0.2764,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.69816
+    },
+    {
+      "period": "2021-06",
+      "base_rate": 0.067,
+      "energy_tax": 0.11408,
+      "total": 0.18108000000000002,
+      "gas_base_rate": 0.2779,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.69966
+    },
+    {
+      "period": "2021-07",
+      "base_rate": 0.0734,
+      "energy_tax": 0.11408,
+      "total": 0.18748,
+      "gas_base_rate": 0.293,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.7147600000000001
+    },
+    {
+      "period": "2021-08",
+      "base_rate": 0.0745,
+      "energy_tax": 0.11408,
+      "total": 0.18858,
+      "gas_base_rate": 0.2958,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.71756
+    },
+    {
+      "period": "2021-09",
+      "base_rate": 0.0755,
+      "energy_tax": 0.11408,
+      "total": 0.18958,
+      "gas_base_rate": 0.2992,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.72096
+    },
+    {
+      "period": "2021-10",
+      "base_rate": 0.0773,
+      "energy_tax": 0.11408,
+      "total": 0.19138,
+      "gas_base_rate": 0.3056,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.72736
+    },
+    {
+      "period": "2021-11",
+      "base_rate": 0.083,
+      "energy_tax": 0.11408,
+      "total": 0.19708,
+      "gas_base_rate": 0.3311,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.7528600000000001
+    },
+    {
+      "period": "2021-12",
+      "base_rate": 0.089,
+      "energy_tax": 0.11408,
+      "total": 0.20307999999999998,
+      "gas_base_rate": 0.3564,
+      "gas_energy_tax": 0.42176,
+      "gas_total": 0.77816
+    },
+    {
+      "period": "2022-01",
+      "base_rate": 0.1256,
+      "energy_tax": 0.04452,
+      "total": 0.17012,
+      "gas_base_rate": 0.5036,
+      "gas_energy_tax": 0.4395,
+      "gas_total": 0.9431
+    },
+    {
+      "period": "2022-02",
+      "base_rate": 0.1377,
+      "energy_tax": 0.04452,
+      "total": 0.18222,
+      "gas_base_rate": 0.5493,
+      "gas_energy_tax": 0.4395,
+      "gas_total": 0.9888
+    },
+    {
+      "period": "2022-03",
+      "base_rate": 0.141,
+      "energy_tax": 0.04452,
+      "total": 0.18552,
+      "gas_base_rate": 0.5696,
+      "gas_energy_tax": 0.4395,
+      "gas_total": 1.0091
+    },
+    {
+      "period": "2022-04",
+      "base_rate": 0.1546,
+      "energy_tax": 0.04452,
+      "total": 0.19912,
+      "gas_base_rate": 0.6307,
+      "gas_energy_tax": 0.4395,
+      "gas_total": 1.0702
+    },
+    {
+      "period": "2022-05",
+      "base_rate": 0.1634,
+      "energy_tax": 0.04452,
+      "total": 0.20792,
+      "gas_base_rate": 0.6716,
+      "gas_energy_tax": 0.4395,
+      "gas_total": 1.1111
+    },
+    {
+      "period": "2022-06",
+      "base_rate": 0.1691,
+      "energy_tax": 0.04452,
+      "total": 0.21362,
+      "gas_base_rate": 0.6928,
+      "gas_energy_tax": 0.4395,
+      "gas_total": 1.1322999999999999
+    },
+    {
+      "period": "2022-07",
+      "base_rate": 0.1793,
+      "energy_tax": 0.0401,
+      "total": 0.21939999999999998,
+      "gas_base_rate": 0.7698,
+      "gas_energy_tax": 0.39591,
+      "gas_total": 1.16571
+    },
+    {
+      "period": "2022-08",
+      "base_rate": 0.1882,
+      "energy_tax": 0.0401,
+      "total": 0.2283,
+      "gas_base_rate": 0.7975,
+      "gas_energy_tax": 0.39591,
+      "gas_total": 1.19341
+    },
+    {
+      "period": "2022-09",
+      "base_rate": 0.2096,
+      "energy_tax": 0.0401,
+      "total": 0.2497,
+      "gas_base_rate": 0.8856,
+      "gas_energy_tax": 0.39591,
+      "gas_total": 1.28151
+    },
+    {
+      "period": "2022-10",
+      "base_rate": 0.2592,
+      "energy_tax": 0.0401,
+      "total": 0.2993,
+      "gas_base_rate": 1.0886,
+      "gas_energy_tax": 0.39591,
+      "gas_total": 1.48451
+    },
+    {
+      "period": "2022-11",
+      "base_rate": 0.3782,
+      "energy_tax": 0.0401,
+      "total": 0.4183,
+      "gas_base_rate": 1.4979,
+      "gas_energy_tax": 0.39591,
+      "gas_total": 1.89381
+    },
+    {
+      "period": "2022-12",
+      "base_rate": 0.4028,
+      "energy_tax": 0.0401,
+      "total": 0.44289999999999996,
+      "gas_base_rate": 1.5162,
+      "gas_energy_tax": 0.39591,
+      "gas_total": 1.91211
+    },
+    {
+      "period": "2023-01",
+      "base_rate": 0.515,
+      "energy_tax": 0.15245,
+      "total": 0.66745,
+      "gas_base_rate": 1.9961,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 2.5887599999999997
+    },
+    {
+      "period": "2023-02",
+      "base_rate": 0.4743,
+      "energy_tax": 0.15245,
+      "total": 0.62675,
+      "gas_base_rate": 1.8467,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 2.4393599999999998
+    },
+    {
+      "period": "2023-03",
+      "base_rate": 0.4307,
+      "energy_tax": 0.15245,
+      "total": 0.5831500000000001,
+      "gas_base_rate": 1.7209,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 2.31356
+    },
+    {
+      "period": "2023-04",
+      "base_rate": 0.2979,
+      "energy_tax": 0.15245,
+      "total": 0.45035000000000003,
+      "gas_base_rate": 1.1846,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.77726
+    },
+    {
+      "period": "2023-05",
+      "base_rate": 0.2507,
+      "energy_tax": 0.15245,
+      "total": 0.40315,
+      "gas_base_rate": 0.952,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.54466
+    },
+    {
+      "period": "2023-06",
+      "base_rate": 0.2343,
+      "energy_tax": 0.15245,
+      "total": 0.38675000000000004,
+      "gas_base_rate": 0.8902,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.48286
+    },
+    {
+      "period": "2023-07",
+      "base_rate": 0.2017,
+      "energy_tax": 0.15245,
+      "total": 0.35414999999999996,
+      "gas_base_rate": 0.6951,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.28776
+    },
+    {
+      "period": "2023-08",
+      "base_rate": 0.1963,
+      "energy_tax": 0.15245,
+      "total": 0.34875,
+      "gas_base_rate": 0.6697,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.26236
+    },
+    {
+      "period": "2023-09",
+      "base_rate": 0.1964,
+      "energy_tax": 0.15245,
+      "total": 0.34885,
+      "gas_base_rate": 0.6683,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.2609599999999999
+    },
+    {
+      "period": "2023-10",
+      "base_rate": 0.1922,
+      "energy_tax": 0.15245,
+      "total": 0.34465,
+      "gas_base_rate": 0.6609,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.25356
+    },
+    {
+      "period": "2023-11",
+      "base_rate": 0.1972,
+      "energy_tax": 0.15245,
+      "total": 0.34965,
+      "gas_base_rate": 0.6834,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.27606
+    },
+    {
+      "period": "2023-12",
+      "base_rate": 0.1994,
+      "energy_tax": 0.15245,
+      "total": 0.35185,
+      "gas_base_rate": 0.6927,
+      "gas_energy_tax": 0.59266,
+      "gas_total": 1.2853599999999998
+    },
+    {
+      "period": "2024-01",
+      "base_rate": 0.1998,
+      "energy_tax": 0.13165,
+      "total": 0.33145,
+      "gas_base_rate": 0.698,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.4034399999999998
+    },
+    {
+      "period": "2024-02",
+      "base_rate": 0.1988,
+      "energy_tax": 0.13165,
+      "total": 0.33045,
+      "gas_base_rate": 0.6896,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.3950399999999998
+    },
+    {
+      "period": "2024-03",
+      "base_rate": 0.1936,
+      "energy_tax": 0.13165,
+      "total": 0.32525,
+      "gas_base_rate": 0.6769,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.38234
+    },
+    {
+      "period": "2024-04",
+      "base_rate": 0.1823,
+      "energy_tax": 0.13165,
+      "total": 0.31394999999999995,
+      "gas_base_rate": 0.6381,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.34354
+    },
+    {
+      "period": "2024-05",
+      "base_rate": 0.1729,
+      "energy_tax": 0.13165,
+      "total": 0.30455,
+      "gas_base_rate": 0.5904,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.29584
+    },
+    {
+      "period": "2024-06",
+      "base_rate": 0.1703,
+      "energy_tax": 0.13165,
+      "total": 0.30195,
+      "gas_base_rate": 0.5859,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.29134
+    },
+    {
+      "period": "2024-07",
+      "base_rate": 0.157,
+      "energy_tax": 0.13165,
+      "total": 0.28864999999999996,
+      "gas_base_rate": 0.5752,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.28064
+    },
+    {
+      "period": "2024-08",
+      "base_rate": 0.1515,
+      "energy_tax": 0.13165,
+      "total": 0.28315,
+      "gas_base_rate": 0.587,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.29244
+    },
+    {
+      "period": "2024-09",
+      "base_rate": 0.1512,
+      "energy_tax": 0.13165,
+      "total": 0.28285,
+      "gas_base_rate": 0.588,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.29344
+    },
+    {
+      "period": "2024-10",
+      "base_rate": 0.1572,
+      "energy_tax": 0.13165,
+      "total": 0.28885,
+      "gas_base_rate": 0.6097,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.31514
+    },
+    {
+      "period": "2024-11",
+      "base_rate": 0.1595,
+      "energy_tax": 0.13165,
+      "total": 0.29115,
+      "gas_base_rate": 0.6224,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.32784
+    },
+    {
+      "period": "2024-12",
+      "base_rate": 0.1584,
+      "energy_tax": 0.13165,
+      "total": 0.29005000000000003,
+      "gas_base_rate": 0.6222,
+      "gas_energy_tax": 0.70544,
+      "gas_total": 1.32764
+    },
+    {
+      "period": "2025-01",
+      "base_rate": 0.1589,
+      "energy_tax": 0.12286,
+      "total": 0.28176,
+      "gas_base_rate": 0.6332,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.33277
+    },
+    {
+      "period": "2025-02",
+      "base_rate": 0.1584,
+      "energy_tax": 0.12286,
+      "total": 0.28126,
+      "gas_base_rate": 0.6454,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.34497
+    },
+    {
+      "period": "2025-03",
+      "base_rate": 0.156,
+      "energy_tax": 0.12286,
+      "total": 0.27886,
+      "gas_base_rate": 0.6494,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.34897
+    },
+    {
+      "period": "2025-04",
+      "base_rate": 0.152,
+      "energy_tax": 0.12286,
+      "total": 0.27486,
+      "gas_base_rate": 0.6596,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.35917
+    },
+    {
+      "period": "2025-05",
+      "base_rate": 0.1481,
+      "energy_tax": 0.12286,
+      "total": 0.27096,
+      "gas_base_rate": 0.6595,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.35907
+    },
+    {
+      "period": "2025-06",
+      "base_rate": 0.147,
+      "energy_tax": 0.12286,
+      "total": 0.26986,
+      "gas_base_rate": 0.6563,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.35587
+    },
+    {
+      "period": "2025-07",
+      "base_rate": 0.1479,
+      "energy_tax": 0.12286,
+      "total": 0.27076,
+      "gas_base_rate": 0.6447,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.34427
+    },
+    {
+      "period": "2025-08",
+      "base_rate": 0.148,
+      "energy_tax": 0.12286,
+      "total": 0.27086,
+      "gas_base_rate": 0.6286,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.32817
+    },
+    {
+      "period": "2025-09",
+      "base_rate": 0.1485,
+      "energy_tax": 0.12286,
+      "total": 0.27136,
+      "gas_base_rate": 0.6269,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.32647
+    },
+    {
+      "period": "2025-10",
+      "base_rate": 0.1514,
+      "energy_tax": 0.12286,
+      "total": 0.27426,
+      "gas_base_rate": 0.6126,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.31217
+    },
+    {
+      "period": "2025-11",
+      "base_rate": 0.1518,
+      "energy_tax": 0.12286,
+      "total": 0.27466,
+      "gas_base_rate": 0.6058,
+      "gas_energy_tax": 0.69957,
+      "gas_total": 1.30537
+    }
+  ]
+}

@@ -21,117 +21,83 @@ def get_output_dir() -> str:
             os.makedirs(output_dir)
         return output_dir
 
-def fetch_energyzero_prices(start_date, end_date):
+def fetch_anwb_electricity_prices_batch(start_date, end_date):
     """
-    Fetch energy prices from the EnergyZero API.
+    Fetch electricity prices from the ANWB API for a single batch.
     
     Args:
         start_date (datetime): The start date for the price data.
         end_date (datetime): The end date for the price data.
         
     Returns:
-        pandas.DataFrame: DataFrame with price data.
+        list: List of price dictionaries.
     """
-    print(f"Fetching energy prices from EnergyZero API for period: {start_date} to {end_date}")
+    start_str = start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    end_str = end_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
     
-    # Format dates for the API - using standard URL encoding
-    from_date = start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    till_date = end_date.strftime("%Y-%m-%dT%H:%M:%S.999Z")
+    url = f"https://api.anwb.nl/energy/energy-services/v2/tarieven/electricity?startDate={start_str}&endDate={end_str}&interval=HOUR"
     
-    # EnergyZero API URL with parameters
-    url = f"https://api.energyzero.nl/v1/energyprices?fromDate={from_date}&tillDate={till_date}&interval=4&usageType=1&inclBtw=true"
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
     
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        
-        # Print the raw response for debugging
-        print(f"API response status: {response.status_code}")
-        data = response.json()
-        
-        # Debug: Print out the structure of the API response
-        print(f"API response keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dictionary'}")
-        
-        # Attempt to extract price data based on different possible structures
-        prices = []
-        
-        if isinstance(data, dict):
-            # Try multiple possible paths to extract price data
-            if 'data' in data and 'Prices' in data['data']:
-                prices = data['data']['Prices']
-                print(f"Found {len(prices)} price points in data.Prices")
-            elif 'Prices' in data:
-                prices = data['Prices']
-                print(f"Found {len(prices)} price points in Prices")
-            elif 'prices' in data:
-                prices = data['prices']
-                print(f"Found {len(prices)} price points in prices")
-            elif 'result' in data and isinstance(data['result'], list):
-                prices = data['result']
-                print(f"Found {len(prices)} price points in result")
-            else:
-                # If we can't find a clear prices array, check all arrays in the response
-                for key, value in data.items():
-                    if isinstance(value, list) and len(value) > 0:
-                        if isinstance(value[0], dict) and ('price' in value[0] or 'readingDate' in value[0]):
-                            prices = value
-                            print(f"Found {len(prices)} price points in {key}")
-                            break
-        
-        if not prices and response.text:
-            # If we still don't have prices but got content, try parsing possible array in the response
-            try:
-                content = response.text
-                if content.startswith('[') and content.endswith(']'):
-                    prices = json.loads(content)
-                    print(f"Parsed array from response text, found {len(prices)} entries")
-            except json.JSONDecodeError:
-                pass
-        
-        if not prices:
-            raise ValueError("API response does not contain price data in expected format")
-            
-        # Convert the data to DataFrame
-        all_prices = []
-        for item in prices:
-            try:
-                timestamp = None
-                price = None
-                
-                # Try different field names for timestamp
-                for field in ['readingDate', 'timestamp', 'datetime', 'date', 'time']:
-                    if field in item:
-                        timestamp = item[field]
-                        break
-                
-                # Try different field names for price
-                for field in ['price', 'Price', 'value', 'Value']:
-                    if field in item:
-                        price = item[field]
-                        break
-                
-                if timestamp and price is not None:  # Allow price to be 0
-                    all_prices.append({
-                        'time': timestamp,
-                        'price': price
-                    })
-            except Exception as e:
-                print(f"Error processing price point: {str(e)}")
-                continue
-                
-        print(f"Successfully processed {len(all_prices)} price points")
-        return pd.DataFrame(all_prices)
+    data = response.json()
     
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching data from API: {str(e)}")
-        return None
-    except ValueError as e:
-        print(f"Error fetching data from API: {str(e)}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error fetching data: {str(e)}")
-        traceback.print_exc()
-        return None
+    if not isinstance(data, dict) or 'data' not in data:
+        raise ValueError("API response does not contain 'data' field")
+    
+    prices = []
+    for item in data['data']:
+        timestamp = item.get('date')
+        values = item.get('values', {})
+        price_cents = values.get('allInPrijs')
+        
+        if timestamp and price_cents is not None:
+            # Convert from cents to euros
+            prices.append({
+                'time': timestamp,
+                'price': price_cents / 100.0
+            })
+    
+    return prices
+
+
+def fetch_anwb_electricity_prices(start_date, end_date):
+    """
+    Fetch electricity prices from the ANWB API in batches (90 days each).
+    
+    Args:
+        start_date (datetime): The start date for the price data.
+        end_date (datetime): The end date for the price data.
+        
+    Returns:
+        pandas.DataFrame: DataFrame with price data (time, price in EUR/kWh).
+    """
+    print(f"Fetching electricity prices from ANWB API for period: {start_date} to {end_date}")
+    
+    # Fetch in batches of 90 days to avoid timeouts
+    batch_days = 90
+    all_prices = []
+    current_start = start_date
+    batch_num = 0
+    
+    while current_start < end_date:
+        batch_num += 1
+        current_end = min(current_start + timedelta(days=batch_days), end_date)
+        
+        print(f"  Batch {batch_num}: {current_start.date()} to {current_end.date()}...")
+        
+        try:
+            prices = fetch_anwb_electricity_prices_batch(current_start, current_end)
+            all_prices.extend(prices)
+            print(f"    -> {len(prices)} prijspunten opgehaald")
+        except Exception as e:
+            print(f"    -> Error in batch: {str(e)}")
+        
+        current_start = current_end
+        time.sleep(0.5)  # Rate limiting
+    
+    print(f"Successfully processed {len(all_prices)} total price points")
+    return pd.DataFrame(all_prices) if all_prices else None
 
 def analyze_data_completeness(prices_df):
     """
@@ -228,8 +194,8 @@ def fetch_entsoe_prices():
     
     print(f"Fetching energy prices for period: {start_date} to {end_date}")
     
-    # Fetch prices from EnergyZero API
-    all_prices = fetch_energyzero_prices(start_date, end_date)
+    # Fetch prices from ANWB API
+    all_prices = fetch_anwb_electricity_prices(start_date, end_date)
     
     # Check if we have valid data
     if all_prices is None or len(all_prices) == 0:
@@ -316,7 +282,7 @@ def fetch_entsoe_prices():
 
 def get_dynamic_electricity_prices(start_date=None):
     """
-    Haal de kale elektriciteitsprijzen (excl. belasting, excl. procurement_costs) per uur op vanaf start_date (default: 450 dagen terug).
+    Haal de all-in elektriciteitsprijzen (incl. BTW) per uur op vanaf start_date (default: 450 dagen terug).
     Geeft een pandas DataFrame terug met kolommen: time (UTC), price (EUR/kWh).
     """
     if start_date is None:
@@ -324,7 +290,7 @@ def get_dynamic_electricity_prices(start_date=None):
         start_date = end_date - timedelta(days=450)
     else:
         end_date = datetime.now() + timedelta(days=1)
-    df = fetch_energyzero_prices(start_date, end_date)
+    df = fetch_anwb_electricity_prices(start_date, end_date)
     if df is not None and len(df) > 0:
         # Zorg dat tijd in UTC staat en als datetime
         if not pd.api.types.is_datetime64_dtype(df['time']):

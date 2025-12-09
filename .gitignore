@@ -19,6 +19,7 @@ venv.bak/
 
 # Data files - ignoring all files starting with data_
 data_*
+*.csv
 
 # OS specific
 .DS_Store
