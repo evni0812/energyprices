@@ -1,7 +1,26 @@
 import os
 import json
+import ssl
+import urllib3
 from datetime import datetime
 import requests
+from requests.adapters import HTTPAdapter
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+class TLS12Adapter(HTTPAdapter):
+    """
+    HTTPS adapter dat TLS 1.2 afdwingt.
+    Nodig omdat opendata.cbs.nl de verbinding verbreekt met Python 3.12+ op macOS.
+    Op Linux/GitHub Actions werkt dit transparant; er is geen nadeel aan TLS 1.2.
+    """
+    def init_poolmanager(self, *args, **kwargs):
+        ctx = ssl.create_default_context()
+        ctx.maximum_version = ssl.TLSVersion.TLSv1_2
+        kwargs['ssl_context'] = ctx
+        super().init_poolmanager(*args, **kwargs)
+
 
 def get_output_dir() -> str:
     """Get the appropriate output directory based on environment."""
@@ -11,20 +30,33 @@ def get_output_dir() -> str:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(script_dir, 'output')
 
+
+def _make_cbs_session() -> requests.Session:
+    session = requests.Session()
+    session.mount("https://opendata.cbs.nl", TLS12Adapter())
+    return session
+
+
 def get_cbs_rates():
     """
     Haal de CBS elektriciteits- en gasprijzen (inclusief btw) per maand op.
     Geeft een lijst van dicts terug met per maand de tarieven en energiebelasting.
+
+    Veldmapping in dataset 85592NED (bijgewerkt feb 2026 – CBS voegde dynamisch-tarief
+    velden _11 en _12 toe, waardoor Energiebelasting elektriciteit verschoof van _12 → _14):
+      Gas:       VariabelLeveringstariefContractprijs_3 + Energiebelasting_6
+      Elektra:   VariabelLeveringstariefContractprijs_9 + Energiebelasting_14
     """
     url = "https://opendata.cbs.nl/ODataApi/odata/85592NED/TypedDataSet"
-    response = requests.get(url, timeout=30)
+    session = _make_cbs_session()
+    response = session.get(url, timeout=30)
     response.raise_for_status()
     data = response.json()
     rates = []
     for item in data.get('value', []):
-        if (item.get('Btw') == 'A048944' and 
-            item.get('Perioden') and 
-            'MM' in item.get('Perioden', '')):
+        if (item.get('Btw') == 'A048944' and
+                item.get('Perioden') and
+                'MM' in item.get('Perioden', '')):
             try:
                 period = item['Perioden']
                 year = int(period[:4])
@@ -32,11 +64,13 @@ def get_cbs_rates():
                 rate_entry = {
                     'period': f"{year}-{month:02d}"
                 }
+                # Elektriciteit: veld _14 is Energiebelasting na CBS-herstructurering feb 2026
+                # (was _12 vóór die datum)
                 has_electricity_data = (item.get('VariabelLeveringstariefContractprijs_9') is not None and
-                                       item.get('Energiebelasting_12') is not None)
+                                        item.get('Energiebelasting_14') is not None)
                 if has_electricity_data:
                     electricity_base_rate = float(item['VariabelLeveringstariefContractprijs_9'])
-                    electricity_energy_tax = float(item['Energiebelasting_12'])
+                    electricity_energy_tax = float(item['Energiebelasting_14'])
                     electricity_total = electricity_base_rate + electricity_energy_tax
                     rate_entry.update({
                         'base_rate': electricity_base_rate,

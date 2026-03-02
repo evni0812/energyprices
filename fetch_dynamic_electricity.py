@@ -280,9 +280,53 @@ def fetch_entsoe_prices():
             json.dump(formatted_data, f, indent=2)
         print(f"Also created entsoe_data.json copy for Vercel deployment")
 
+def fetch_anwb_electricity_prices_monthly_interval(start_date, end_date):
+    """
+    Haal maandgemiddelden op via het MONTH interval van de ANWB API.
+
+    De `date`-veldwaarde in de response is de **start van die maand in Amsterdam-tijd**
+    uitgedrukt als UTC. Voorbeeld: 2026-02-28T23:00:00Z = 2026-03-01 00:00 CET = maart 2026.
+
+    Geeft een DataFrame terug met kolommen: time (UTC, eerste van de maand), price (EUR/kWh).
+    """
+    from zoneinfo import ZoneInfo
+    from datetime import timezone
+
+    amsterdam = ZoneInfo('Europe/Amsterdam')
+    start_str = start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    end_str = end_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    url = (f"https://api.anwb.nl/energy/energy-services/v2/tarieven/electricity"
+           f"?startDate={start_str}&endDate={end_str}&interval=MONTH")
+
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
+    data = response.json()
+
+    prices = []
+    for item in data.get('data', []):
+        ts_utc = datetime.fromisoformat(item['date'].replace('Z', '+00:00'))
+        ts_ams = ts_utc.astimezone(amsterdam)
+        # date = start van die maand in Amsterdam; year/month direct uit Amsterdam-tijd
+        month_start_utc = datetime(ts_ams.year, ts_ams.month, 1, tzinfo=timezone.utc)
+        price_cents = item.get('values', {}).get('allInPrijs')
+        if price_cents is not None:
+            prices.append({'time': month_start_utc, 'price': round(price_cents / 100.0, 5)})
+
+    if not prices:
+        return None
+    df = pd.DataFrame(prices)
+    df['time'] = pd.to_datetime(df['time'], utc=True)
+    return df
+
+
 def get_dynamic_electricity_prices(start_date=None):
     """
-    Haal de all-in elektriciteitsprijzen (incl. BTW) per uur op vanaf start_date (default: 450 dagen terug).
+    Haal de all-in elektriciteitsprijzen (incl. BTW) op vanaf start_date.
+
+    Probeert eerst het HOUR-interval (meest granulaire data, maar ANWB biedt alleen de
+    laatste ~2 dagen via dit endpoint). Vult ontbrekende maanden aan met het MONTH-interval
+    dat teruggaat tot januari 2021 en altijd beschikbaar is.
+
     Geeft een pandas DataFrame terug met kolommen: time (UTC), price (EUR/kWh).
     """
     if start_date is None:
@@ -290,16 +334,42 @@ def get_dynamic_electricity_prices(start_date=None):
         start_date = end_date - timedelta(days=450)
     else:
         end_date = datetime.now() + timedelta(days=1)
-    df = fetch_anwb_electricity_prices(start_date, end_date)
-    if df is not None and len(df) > 0:
-        # Zorg dat tijd in UTC staat en als datetime
-        if not pd.api.types.is_datetime64_dtype(df['time']):
-            df['time'] = pd.to_datetime(df['time'], utc=True)
-        if df['time'].dt.tz is not None and str(df['time'].dt.tz) != 'UTC':
-            df['time'] = df['time'].dt.tz_convert('UTC')
-        # Alleen kolommen time en price
-        return df[['time', 'price']].copy()
-    return df
+
+    # --- HOUR interval (granulaire recente data) ---
+    df_hour = fetch_anwb_electricity_prices(start_date, end_date)
+    if df_hour is not None and len(df_hour) > 0:
+        if not pd.api.types.is_datetime64_dtype(df_hour['time']):
+            df_hour['time'] = pd.to_datetime(df_hour['time'], utc=True)
+        if df_hour['time'].dt.tz is not None and str(df_hour['time'].dt.tz) != 'UTC':
+            df_hour['time'] = df_hour['time'].dt.tz_convert('UTC')
+        df_hour = df_hour[['time', 'price']].copy()
+    else:
+        df_hour = None
+
+    # --- MONTH interval (vult historische gaten) ---
+    # Electricity MONTH dates zijn de start van de maand in Amsterdam-tijd als UTC,
+    # bijv. nov-25 = 2025-10-31T23:00Z. Trek 1 dag af van start_date zodat de
+    # startmaand niet gemist wordt door de UTC-offset.
+    df_month = None
+    try:
+        df_month = fetch_anwb_electricity_prices_monthly_interval(
+            start_date - timedelta(days=1), end_date
+        )
+    except Exception as e:
+        print(f"[WARN] MONTH interval mislukt: {e}")
+
+    if df_month is None or len(df_month) == 0:
+        return df_hour
+
+    if df_hour is None or len(df_hour) == 0:
+        return df_month[['time', 'price']].copy()
+
+    # Voeg MONTH-data toe voor maanden die HOUR niet dekt
+    hour_months = set(df_hour['time'].dt.strftime('%Y-%m'))
+    df_month_extra = df_month[~df_month['time'].dt.strftime('%Y-%m').isin(hour_months)]
+    combined = (pd.concat([df_hour, df_month_extra], ignore_index=True)
+                .sort_values('time').reset_index(drop=True))
+    return combined[['time', 'price']].copy()
 
 if __name__ == "__main__":
     fetch_entsoe_prices()  # Keep the same function name for compatibility 

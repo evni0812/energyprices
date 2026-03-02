@@ -172,52 +172,111 @@ def fetch_anwb_gas_prices_batch(start_date, end_date):
     return daily_prices
 
 
+def fetch_anwb_gas_prices_monthly_interval(start_date, end_date):
+    """
+    Haal maandgemiddelden op via het MONTH interval van de ANWB gas API.
+
+    De `date`-veldwaarde is de **start van die maand in Amsterdam-tijd** als UTC.
+    Voorbeeld: 2024-01-01T00:00:00Z = 2024-01-01T01:00 CET = januari 2024.
+
+    Geeft een DataFrame terug met kolommen: time (UTC, eerste van de maand), price (EUR/m3).
+    """
+    from zoneinfo import ZoneInfo
+    from datetime import timezone
+
+    amsterdam = ZoneInfo('Europe/Amsterdam')
+    start_str = start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    end_str = end_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    url = (f"https://api.anwb.nl/energy/energy-services/v2/tarieven/gas"
+           f"?startDate={start_str}&endDate={end_str}&interval=MONTH")
+
+    response = requests.get(url, timeout=60)
+    if response.status_code != 200:
+        raise ValueError(f"API returned {response.status_code}: {response.text}")
+    data = response.json()
+
+    prices = []
+    for item in data.get('data', []):
+        ts_utc = datetime.fromisoformat(item['date'].replace('Z', '+00:00'))
+        ts_ams = ts_utc.astimezone(amsterdam)
+        month_start_utc = datetime(ts_ams.year, ts_ams.month, 1, tzinfo=timezone.utc)
+        price_cents = item.get('values', {}).get('allInPrijs')
+        if price_cents is not None:
+            prices.append({'time': month_start_utc, 'price': round(price_cents / 100.0, 5)})
+
+    if not prices:
+        return None
+    df = pd.DataFrame(prices)
+    df['time'] = pd.to_datetime(df['time'], utc=True)
+    return df
+
+
 def get_dynamic_gas_prices(start_date=None):
     """
-    Haal de all-in gasprijzen (incl. BTW) per dag op vanaf start_date (default: 1 dec 2023).
+    Haal de all-in gasprijzen (incl. BTW) op vanaf start_date (default: 1 dec 2023).
+
+    Probeert eerst het dagelijkse HOUR-interval in batches. Vult ontbrekende maanden
+    aan met het MONTH-interval dat beschikbaar is vanaf januari 2024.
+
     Geeft een pandas DataFrame terug met kolommen: time (UTC, datetime), price (EUR/m3).
-    Fetches in batches of 90 days to avoid API timeouts.
     """
     import time as time_module
-    
+
     if start_date is None:
         start_date = datetime(2023, 12, 1)
     end_date = datetime.now()
-    
+
     print(f"Fetching gas prices from ANWB API for period: {start_date.date()} to {end_date.date()}")
-    
-    # Fetch in batches of 90 days
+
+    # --- Dagelijkse batches (HOUR interval) ---
     batch_days = 90
     all_daily_prices = {}
     current_start = start_date
     batch_num = 0
-    
+
     while current_start < end_date:
         batch_num += 1
         current_end = min(current_start + timedelta(days=batch_days), end_date)
-        
         print(f"  Batch {batch_num}: {current_start.date()} to {current_end.date()}...")
-        
         try:
             daily_prices = fetch_anwb_gas_prices_batch(current_start, current_end)
             all_daily_prices.update(daily_prices)
             print(f"    -> {len(daily_prices)} dagen opgehaald")
         except Exception as e:
             print(f"    -> Error in batch: {str(e)}")
-        
         current_start = current_end
-        time_module.sleep(0.5)  # Rate limiting
-    
-    df = pd.DataFrame(list(all_daily_prices.values()))
-    if len(df) > 0:
-        if not pd.api.types.is_datetime64_dtype(df['time']):
-            df['time'] = pd.to_datetime(df['time'], utc=True)
-        if df['time'].dt.tz is not None and str(df['time'].dt.tz) != 'UTC':
-            df['time'] = df['time'].dt.tz_convert('UTC')
-        df = df.sort_values('time').reset_index(drop=True)
-    
-    print(f"Successfully processed {len(df)} total daily prices")
-    return df
+        time_module.sleep(0.5)
+
+    df_daily = pd.DataFrame(list(all_daily_prices.values())) if all_daily_prices else pd.DataFrame()
+    if len(df_daily) > 0:
+        if not pd.api.types.is_datetime64_dtype(df_daily['time']):
+            df_daily['time'] = pd.to_datetime(df_daily['time'], utc=True)
+        if df_daily['time'].dt.tz is not None and str(df_daily['time'].dt.tz) != 'UTC':
+            df_daily['time'] = df_daily['time'].dt.tz_convert('UTC')
+        df_daily = df_daily.sort_values('time').reset_index(drop=True)
+
+    # --- MONTH interval (vult historische gaten) ---
+    df_month = None
+    try:
+        df_month = fetch_anwb_gas_prices_monthly_interval(start_date, end_date + timedelta(days=1))
+    except Exception as e:
+        print(f"[WARN] Gas MONTH interval mislukt: {e}")
+
+    if df_month is None or len(df_month) == 0:
+        print(f"Successfully processed {len(df_daily)} total daily prices")
+        return df_daily
+
+    if len(df_daily) == 0:
+        print(f"Successfully processed {len(df_month)} monthly prices (MONTH interval)")
+        return df_month[['time', 'price']].copy()
+
+    # Voeg MONTH-data toe voor maanden die dagelijkse data niet dekt
+    daily_months = set(df_daily['time'].dt.strftime('%Y-%m'))
+    df_month_extra = df_month[~df_month['time'].dt.strftime('%Y-%m').isin(daily_months)]
+    combined = (pd.concat([df_daily, df_month_extra], ignore_index=True)
+                .sort_values('time').reset_index(drop=True))
+    print(f"Successfully processed {len(combined)} total prices (daily + MONTH supplement)")
+    return combined[['time', 'price']].copy()
 
 if __name__ == '__main__':
     print("Script started")

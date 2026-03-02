@@ -236,22 +236,42 @@ def main():
     # Merge pipeline data
     pipeline = cbs_df.merge(anwb_elec, on='DATE', how='outer').merge(anwb_gas, on='DATE', how='outer')
     pipeline = pipeline.sort_values('DATE').reset_index(drop=True)
-    
+
     # Pipeline data: alles na mar-25, met mooie maandnotatie
     pipeline['DATE'] = pipeline['DATE'].apply(
-        lambda d: datetime.strptime(d, '%Y-%m').strftime('%b-%y').lower() 
-        if isinstance(d, str) and len(d) == 7 and '-' in d and d[4] == '-'  # Format like '2025-04'
+        lambda d: datetime.strptime(d, '%Y-%m').strftime('%b-%y').lower()
+        if isinstance(d, str) and len(d) == 7 and '-' in d and d[4] == '-'
         else d
     )
     pipeline = pipeline[pipeline['DATE'].apply(month_gt_mar25)]
-    
-    # Filter: alleen rijen waar ALLE data beschikbaar is (CBS komt vaak als laatste)
+
+    # Filter: alleen rijen waar ALLE data beschikbaar is (CBS publiceert met vertraging)
     pipeline = pipeline.dropna(subset=['CBS stroom', 'ANWB stroom', 'CBS gas', 'ANWB gas'])
 
     # Combineer origineel + pipeline
-    compare = pd.concat([orig_elec_df.join(orig_gas_df.set_index('DATE'), on='DATE', rsuffix='_gas').iloc[:, :5], pipeline], ignore_index=True, sort=False)
-    # Schrijf naar CSV
+    compare = pd.concat(
+        [orig_elec_df.join(orig_gas_df.set_index('DATE'), on='DATE', rsuffix='_gas').iloc[:, :5], pipeline],
+        ignore_index=True, sort=False
+    )
+
     compare_path = os.path.join(OUTPUT_DIR, 'compare_prices.csv')
+
+    # Regressie-bescherming: schrijf de nieuwe CSV alleen als het aantal maanden
+    # niet kleiner is dan het vorige aantal. Dit voorkomt dat een tijdelijke API-storing
+    # of veldnaamswijziging bij CBS data weggooit die we al hadden.
+    if os.path.exists(compare_path):
+        try:
+            existing_compare = pd.read_csv(compare_path)
+            existing_count = len(existing_compare)
+            new_count = len(compare)
+            if new_count < existing_count:
+                print(f"[WARN] Nieuwe data heeft {new_count} maanden, bestaande heeft {existing_count}. "
+                      "Schrijven geannuleerd om regressie te voorkomen.")
+                log_run(f"Run: {new_count} maanden berekend (< {existing_count} bestaand) – NIET overschreven.")
+                return
+        except Exception as e:
+            print(f"[WARN] Kon bestaande CSV niet lezen voor regressiecheck: {e}")
+
     prev_hash = file_hash(compare_path)
     compare.to_csv(compare_path, index=False, float_format='%.4f')
     new_hash = file_hash(compare_path)
