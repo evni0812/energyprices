@@ -1,6 +1,7 @@
 import os
 import json
 import ssl
+import time
 import urllib3
 from datetime import datetime
 import requests
@@ -37,7 +38,7 @@ def _make_cbs_session() -> requests.Session:
     return session
 
 
-def get_cbs_rates():
+def get_cbs_rates(max_retries=4, retry_delay=15):
     """
     Haal de CBS elektriciteits- en gasprijzen (inclusief btw) per maand op.
     Geeft een lijst van dicts terug met per maand de tarieven en energiebelasting.
@@ -46,12 +47,27 @@ def get_cbs_rates():
     velden _11 en _12 toe, waardoor Energiebelasting elektriciteit verschoof van _12 → _14):
       Gas:       VariabelLeveringstariefContractprijs_3 + Energiebelasting_6
       Elektra:   VariabelLeveringstariefContractprijs_9 + Energiebelasting_14
+
+    Bij tijdelijke netwerkstoringen (DNS, timeout) wordt max_retries keer opnieuw
+    geprobeerd met retry_delay seconden pauze.
     """
     url = "https://opendata.cbs.nl/ODataApi/odata/85592NED/TypedDataSet"
-    session = _make_cbs_session()
-    response = session.get(url, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            session = _make_cbs_session()
+            response = session.get(url, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            break  # succes, ga verder met verwerking
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                print(f"[WARN] CBS poging {attempt}/{max_retries} mislukt "
+                      f"({type(e).__name__}), retry in {retry_delay}s...")
+                time.sleep(retry_delay)
+            else:
+                raise last_error
     rates = []
     for item in data.get('value', []):
         if (item.get('Btw') == 'A048944' and
