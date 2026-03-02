@@ -150,11 +150,16 @@ def main():
     ensure_output_dir()
     elec_path = os.path.join(OUTPUT_DIR, 'monthly_electricity_prices.csv')
     gas_path = os.path.join(OUTPUT_DIR, 'monthly_gas_prices.csv')
-    
+
     # CBS altijd volledig ophalen (korte call, data kan achteraf veranderen)
     print("[INFO] Ophalen CBS-tarieven (altijd volledig)...")
-    cbs_rates = get_cbs_rates()
-    print(f"[INFO] {len(cbs_rates)} CBS-maanden opgehaald.")
+    try:
+        cbs_rates = get_cbs_rates()
+        print(f"[INFO] {len(cbs_rates)} CBS-maanden opgehaald.")
+    except Exception as e:
+        print(f"[ERROR] CBS niet bereikbaar, run overgeslagen: {e}")
+        log_run(f"Run: CBS niet bereikbaar – bestaande data ongewijzigd gelaten. Fout: {type(e).__name__}: {e}")
+        return
 
     # Bepaal vanaf welke maand we ANWB data moeten ophalen
     last_elec_month = get_last_known_month(elec_path)
