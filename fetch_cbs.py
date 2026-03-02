@@ -34,11 +34,14 @@ def get_output_dir() -> str:
 
 def _make_cbs_session() -> requests.Session:
     session = requests.Session()
-    session.mount("https://opendata.cbs.nl", TLS12Adapter())
+    # TLS12Adapter is alleen nodig op macOS met Python 3.12+ (TLS 1.3 handshake-bug).
+    # GitHub Actions gebruikt Ubuntu waar TLS prima werkt met de standaard adapter.
+    if not os.environ.get('GITHUB_ACTIONS'):
+        session.mount("https://opendata.cbs.nl", TLS12Adapter())
     return session
 
 
-def get_cbs_rates(max_retries=4, retry_delay=15):
+def get_cbs_rates(max_retries=3, retry_delay=5):
     """
     Haal de CBS elektriciteits- en gasprijzen (inclusief btw) per maand op.
     Geeft een lijst van dicts terug met per maand de tarieven en energiebelasting.
