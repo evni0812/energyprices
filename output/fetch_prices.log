@@ -306,3 +306,4 @@
 [2026-03-02T12:37:49.915704] Run: CBS niet bereikbaar – bestaande data ongewijzigd gelaten. Fout: ConnectionError: HTTPSConnectionPool(host='opendata.cbs.nl', port=443): Max retries exceeded with url: /ODataApi/odata/85592NED/TypedDataSet (Caused by NameResolutionError("HTTPSConnection(host='opendata.cbs.nl', port=443): Failed to resolve 'opendata.cbs.nl' ([Errno -3] Temporary failure in name resolution)"))
 [2026-03-02T12:42:50.684215] Run: 61 maanden in compare_prices.csv. Gewijzigd: True
 [2026-03-02T12:54:36.307846] Run: 61 maanden in compare_prices.csv. Gewijzigd: False
+[2026-03-03T05:43:22.219181] Run: 61 maanden in compare_prices.csv. Gewijzigd: False
