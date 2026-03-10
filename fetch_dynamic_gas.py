@@ -25,119 +25,48 @@ def get_output_dir() -> str:
         return output_dir
 
 def fetch_anwb_gas_prices():
-    """Fetch gas prices from ANWB API and save them to a JSON file."""
-    # Set time range from 2023 till today
+    """
+    Haal gasprijzen op uit de maandgrafiek (ANWB MONTH) en sla all-in tarief op.
+    Zelfde aanpak als elektriciteit: alleen maanddata, all-in, geen extra aanpassingen.
+    """
     start_date = datetime(2023, 12, 1)
-    end_date = datetime.now()
-    
-    # Format dates for API URL
-    start_str = start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    end_str = end_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    
-    # ANWB API URL for gas
-    url = f"https://api.anwb.nl/energy/energy-services/v2/tarieven/gas?startDate={start_str}&endDate={end_str}&interval=HOUR"
-    print(f"Fetching gas prices from {start_date.date()} to {end_date.date()}...")
-    print(f"API URL: {url}")
-    
+    df = get_dynamic_gas_prices(start_date=start_date, interval='MONTH')
+    if df is None or len(df) == 0:
+        print("Failed to fetch gas price data. No data will be saved.")
+        return
     try:
-        # Fetch data from API
-        print("Sending API request...")
-        response = requests.get(url, timeout=60)
-        print(f"API Response status code: {response.status_code}")
-        
-        if response.status_code != 200:
-            print(f"API Error: {response.text}")
-            raise ValueError(f"API returned status code {response.status_code}")
-        
-        # Parse JSON response
-        print("Parsing JSON response...")
-        data = response.json()
-        
-        # Debug: print data keys
-        print(f"Response keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dictionary'}")
-        
-        if not data or not isinstance(data, dict) or 'data' not in data:
-            print(f"Invalid API response: {data}")
-            raise ValueError("No 'data' field found in the API response")
-        
-        # Process prices - filter to one price per day
-        print(f"Processing {len(data['data'])} price points...")
-        daily_prices = {}  # Dictionary to store one price per day
-        
-        for item in data['data']:
-            # Parse timestamp
-            timestamp = datetime.fromisoformat(item['date'].replace('Z', '+00:00'))
-            
-            # Extract just the date part (without time)
-            date_key = timestamp.date().isoformat()
-            
-            # Only keep the first price we see for each day
-            if date_key not in daily_prices:
-                # Get allInPrijs (in cents) and convert to euros
-                values = item.get('values', {})
-                price_cents = values.get('allInPrijs')
-                
-                if price_cents is not None:
-                    # Convert from cents to euros
-                    price_euros = price_cents / 100.0
-                    
-                    # Create price entry
-                    price_entry = {
-                        'time': timestamp.isoformat(),
-                        'price': price_euros,
-                        'breakdown': {
-                            'base_price': price_euros,
-                            'energy_tax': 0.0,
-                            'procurement_costs': 0.0
-                        }
-                    }
-                    
-                    daily_prices[date_key] = price_entry
-        
-        # Convert dictionary to list
-        prices = list(daily_prices.values())
-        
-        # Sort prices by time
-        prices.sort(key=lambda x: x['time'])
-        
-        print(f"Filtered to {len(prices)} daily price points (one per day)...")
-        
-        # Create output data structure
+        output_dir = get_output_dir()
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, 'anwb_gas_prices.json')
+        # Zelfde formaat als voorheen: time, price (all-in), breakdown (base_price=price, rest 0)
+        prices = []
+        for _, row in df.iterrows():
+            t = row['time']
+            ts_str = t.isoformat() if hasattr(t, 'isoformat') else str(t)
+            price = float(row['price'])
+            prices.append({
+                'time': ts_str,
+                'price': round(price, 5),
+                'breakdown': {
+                    'base_price': round(price, 5),
+                    'energy_tax': 0.0,
+                    'procurement_costs': 0.0
+                }
+            })
         output_data = {
             'last_updated': datetime.now().isoformat(),
             'prices': prices
         }
-        
-        # Save to output directory
-        output_dir = get_output_dir()
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, 'anwb_gas_prices.json')
-        
-        print(f"Saving {len(prices)} price points to {output_path}...")
-        
-        # Save as JSON
         with open(output_path, 'w') as f:
             json.dump(output_data, f, indent=2)
-        
-        # If we're on Vercel, also save to public directory
         if os.environ.get('VERCEL'):
             public_dir = os.path.join(os.getcwd(), 'public', 'data')
             os.makedirs(public_dir, exist_ok=True)
-            public_path = os.path.join(public_dir, 'anwb_gas_prices.json')
-            with open(public_path, 'w') as f:
+            with open(os.path.join(public_dir, 'anwb_gas_prices.json'), 'w') as f:
                 json.dump(output_data, f, indent=2)
-        
-        print(f"ANWB gas prices saved to {output_path}")
-        print(f"Total number of price points: {len(prices)}")
-        
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching ANWB data: {e}")
-        traceback.print_exc()
-    except ValueError as e:
-        print(f"Error processing data: {e}")
-        traceback.print_exc()
+        print(f"ANWB gas prices saved to {output_path} ({len(prices)} monthly points)")
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        print(f"Error saving gas data: {e}")
         traceback.print_exc()
 
 def fetch_anwb_gas_prices_batch(start_date, end_date):
@@ -174,10 +103,11 @@ def fetch_anwb_gas_prices_batch(start_date, end_date):
 
 def fetch_anwb_gas_prices_monthly_interval(start_date, end_date):
     """
-    Haal maandgemiddelden op via het MONTH interval van de ANWB gas API.
+    Haal maandgemiddelden op via het MONTH interval van de ANWB gas API (maandgrafiek).
 
-    De `date`-veldwaarde is de **start van die maand in Amsterdam-tijd** als UTC.
-    Voorbeeld: 2024-01-01T00:00:00Z = 2024-01-01T01:00 CET = januari 2024.
+    Response date is eind-van-maand UTC = start volgende maand in Amsterdam.
+    Voorbeeld: 2025-12-31T23:00:00Z = 2026-01-01 00:00 CET = data voor januari 2026.
+    Gebruik allInPrijs (cent) → EUR; geen extra aanpassingen.
 
     Geeft een DataFrame terug met kolommen: time (UTC, eerste van de maand), price (EUR/m3).
     """
@@ -211,24 +141,39 @@ def fetch_anwb_gas_prices_monthly_interval(start_date, end_date):
     return df
 
 
-def get_dynamic_gas_prices(start_date=None):
+def get_dynamic_gas_prices(start_date=None, interval='MONTH'):
     """
-    Haal de all-in gasprijzen (incl. BTW) op vanaf start_date (default: 1 dec 2023).
+    Haal de all-in gasprijzen (incl. BTW) op vanaf start_date.
 
-    Probeert eerst het dagelijkse HOUR-interval in batches. Vult ontbrekende maanden
-    aan met het MONTH-interval dat beschikbaar is vanaf januari 2024.
+    interval: 'MONTH' (default) of 'HOUR'.
+    - MONTH: alleen maanddata uit de maandgrafiek (ANWB MONTH), all-in tarief.
+    - HOUR: probeert uurtarieven in batches en vult aan met MONTH waar ontbreekt.
 
-    Geeft een pandas DataFrame terug met kolommen: time (UTC, datetime), price (EUR/m3).
+    Geeft een pandas DataFrame terug met kolommen: time (UTC), price (EUR/m3).
     """
-    import time as time_module
-
     if start_date is None:
         start_date = datetime(2023, 12, 1)
-    end_date = datetime.now()
+    end_date = datetime.now() + timedelta(days=1)
 
+    # MONTH als default: alleen data uit maandgrafiek, all-in tarief
+    if interval == 'MONTH':
+        try:
+            # Trek 1 dag af van start_date zodat de startmaand niet gemist wordt (zelfde als elektra)
+            df_month = fetch_anwb_gas_prices_monthly_interval(
+                start_date - timedelta(days=1), end_date
+            )
+        except Exception as e:
+            print(f"[WARN] Gas MONTH interval mislukt: {e}")
+            return None
+        if df_month is None or len(df_month) == 0:
+            return None
+        print(f"Successfully processed {len(df_month)} monthly gas prices (MONTH interval)")
+        return df_month[['time', 'price']].copy()
+
+    # HOUR: batches + MONTH als aanvulling
+    import time as time_module
     print(f"Fetching gas prices from ANWB API for period: {start_date.date()} to {end_date.date()}")
 
-    # --- Dagelijkse batches (HOUR interval) ---
     batch_days = 90
     all_daily_prices = {}
     current_start = start_date
@@ -255,22 +200,18 @@ def get_dynamic_gas_prices(start_date=None):
             df_daily['time'] = df_daily['time'].dt.tz_convert('UTC')
         df_daily = df_daily.sort_values('time').reset_index(drop=True)
 
-    # --- MONTH interval (vult historische gaten) ---
-    df_month = None
     try:
-        df_month = fetch_anwb_gas_prices_monthly_interval(start_date, end_date + timedelta(days=1))
+        df_month = fetch_anwb_gas_prices_monthly_interval(start_date, end_date)
     except Exception as e:
         print(f"[WARN] Gas MONTH interval mislukt: {e}")
+        df_month = None
 
     if df_month is None or len(df_month) == 0:
-        print(f"Successfully processed {len(df_daily)} total daily prices")
-        return df_daily
+        return df_daily[['time', 'price']].copy() if len(df_daily) > 0 else None
 
     if len(df_daily) == 0:
-        print(f"Successfully processed {len(df_month)} monthly prices (MONTH interval)")
         return df_month[['time', 'price']].copy()
 
-    # Voeg MONTH-data toe voor maanden die dagelijkse data niet dekt
     daily_months = set(df_daily['time'].dt.strftime('%Y-%m'))
     df_month_extra = df_month[~df_month['time'].dt.strftime('%Y-%m').isin(daily_months)]
     combined = (pd.concat([df_daily, df_month_extra], ignore_index=True)

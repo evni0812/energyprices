@@ -194,8 +194,8 @@ def fetch_entsoe_prices():
     
     print(f"Fetching energy prices for period: {start_date} to {end_date}")
     
-    # Fetch prices from ANWB API
-    all_prices = fetch_anwb_electricity_prices(start_date, end_date)
+    # Fetch prices (HOUR + MONTH fallback voor volledige reeks)
+    all_prices = get_dynamic_electricity_prices(start_date=start_date)
     
     # Check if we have valid data
     if all_prices is None or len(all_prices) == 0:
@@ -214,18 +214,11 @@ def fetch_entsoe_prices():
     # Analyze data completeness (without filling gaps)
     all_prices = analyze_data_completeness(all_prices)
     
-    # Calculate the price breakdown including energy tax and procurement costs
-    print("Calculating price breakdown...")
+    # Gebruik all-in prijs uit API (allInPrijs) zonder extra aanpassingen
+    all_prices['total_price'] = all_prices['price']
     all_prices['base_price'] = all_prices['price']
-    
-    # Add procurement costs
-    all_prices['procurement_costs'] = 0.04  # Simplified procurement costs
-
-    # Calculate VAT (21% on all components)
-    all_prices['vat'] = (all_prices['base_price'] + all_prices['procurement_costs']) * 0.21
-    
-    # Calculate total price (including VAT)
-    all_prices['total_price'] = all_prices['base_price'] + all_prices['procurement_costs'] + all_prices['vat']
+    all_prices['procurement_costs'] = 0.0
+    all_prices['vat'] = 0.0
     
     # Convert datetime objects to strings to make them JSON serializable
     all_prices['time'] = all_prices['time'].dt.strftime('%Y-%m-%dT%H:%M:%S%z')
@@ -284,8 +277,13 @@ def fetch_anwb_electricity_prices_monthly_interval(start_date, end_date):
     """
     Haal maandgemiddelden op via het MONTH interval van de ANWB API.
 
-    De `date`-veldwaarde in de response is de **start van die maand in Amsterdam-tijd**
-    uitgedrukt als UTC. Voorbeeld: 2026-02-28T23:00:00Z = 2026-03-01 00:00 CET = maart 2026.
+    URL-formaat:
+        https://api.anwb.nl/energy/energy-services/v2/tarieven/electricity
+            ?startDate=...&endDate=...&interval=MONTH
+
+    Response: data[] met per maand date (UTC) en values.allInPrijs (cent/kWh).
+    De date is de start van die maand in Amsterdam-tijd uitgedrukt als UTC
+    (bijv. 2026-02-28T23:00:00Z = 2026-03-01 00:00 CET = maart 2026).
 
     Geeft een DataFrame terug met kolommen: time (UTC, eerste van de maand), price (EUR/kWh).
     """
@@ -306,7 +304,8 @@ def fetch_anwb_electricity_prices_monthly_interval(start_date, end_date):
     for item in data.get('data', []):
         ts_utc = datetime.fromisoformat(item['date'].replace('Z', '+00:00'))
         ts_ams = ts_utc.astimezone(amsterdam)
-        # date = start van die maand in Amsterdam; year/month direct uit Amsterdam-tijd
+        # API geeft eind-van-maand UTC (bv. 2025-12-31T23:00Z) = start volgende maand in Amsterdam
+        # → 31-12-25 in response = data voor januari 2026; year/month uit Amsterdam-tijd
         month_start_utc = datetime(ts_ams.year, ts_ams.month, 1, tzinfo=timezone.utc)
         price_cents = item.get('values', {}).get('allInPrijs')
         if price_cents is not None:
@@ -319,13 +318,13 @@ def fetch_anwb_electricity_prices_monthly_interval(start_date, end_date):
     return df
 
 
-def get_dynamic_electricity_prices(start_date=None):
+def get_dynamic_electricity_prices(start_date=None, interval='MONTH'):
     """
     Haal de all-in elektriciteitsprijzen (incl. BTW) op vanaf start_date.
 
-    Probeert eerst het HOUR-interval (meest granulaire data, maar ANWB biedt alleen de
-    laatste ~2 dagen via dit endpoint). Vult ontbrekende maanden aan met het MONTH-interval
-    dat teruggaat tot januari 2021 en altijd beschikbaar is.
+    interval: 'MONTH' (default) of 'HOUR'.
+    - MONTH: alleen maanddata (ANWB MONTH, terug tot jan 2021).
+    - HOUR: probeert uurtarieven en vult aan met MONTH waar HOUR ontbreekt.
 
     Geeft een pandas DataFrame terug met kolommen: time (UTC), price (EUR/kWh).
     """
@@ -335,7 +334,18 @@ def get_dynamic_electricity_prices(start_date=None):
     else:
         end_date = datetime.now() + timedelta(days=1)
 
-    # --- HOUR interval (granulaire recente data) ---
+    # MONTH als default: alleen maanddata
+    if interval == 'MONTH':
+        try:
+            df_month = fetch_anwb_electricity_prices_monthly_interval(
+                start_date - timedelta(days=1), end_date
+            )
+        except Exception as e:
+            print(f"[WARN] MONTH interval mislukt: {e}")
+            return None
+        return df_month[['time', 'price']].copy() if df_month is not None and len(df_month) > 0 else None
+
+    # HOUR: probeer uurtarieven, vul aan met MONTH
     df_hour = fetch_anwb_electricity_prices(start_date, end_date)
     if df_hour is not None and len(df_hour) > 0:
         if not pd.api.types.is_datetime64_dtype(df_hour['time']):
@@ -346,17 +356,13 @@ def get_dynamic_electricity_prices(start_date=None):
     else:
         df_hour = None
 
-    # --- MONTH interval (vult historische gaten) ---
-    # Electricity MONTH dates zijn de start van de maand in Amsterdam-tijd als UTC,
-    # bijv. nov-25 = 2025-10-31T23:00Z. Trek 1 dag af van start_date zodat de
-    # startmaand niet gemist wordt door de UTC-offset.
-    df_month = None
     try:
         df_month = fetch_anwb_electricity_prices_monthly_interval(
             start_date - timedelta(days=1), end_date
         )
     except Exception as e:
         print(f"[WARN] MONTH interval mislukt: {e}")
+        df_month = None
 
     if df_month is None or len(df_month) == 0:
         return df_hour
@@ -364,7 +370,6 @@ def get_dynamic_electricity_prices(start_date=None):
     if df_hour is None or len(df_hour) == 0:
         return df_month[['time', 'price']].copy()
 
-    # Voeg MONTH-data toe voor maanden die HOUR niet dekt
     hour_months = set(df_hour['time'].dt.strftime('%Y-%m'))
     df_month_extra = df_month[~df_month['time'].dt.strftime('%Y-%m').isin(hour_months)]
     combined = (pd.concat([df_hour, df_month_extra], ignore_index=True)

@@ -184,9 +184,9 @@ def main():
         gas_start = datetime(2021, 1, 1)
         print("[INFO] Gas: geen bestaande data, ophalen vanaf 2021-01")
 
-    # Ophalen ANWB elektriciteit (alleen nieuwe data)
+    # Ophalen ANWB elektriciteit: maandgrafiek (MONTH), all-in tarief → gebruikt voor compare_prices.csv
     print(f"[INFO] Ophalen all-in elektriciteitsprijzen (ANWB) vanaf {elec_start.strftime('%Y-%m')}...")
-    elec_df = get_dynamic_electricity_prices(start_date=elec_start)
+    elec_df = get_dynamic_electricity_prices(start_date=elec_start)  # default interval='MONTH'
     if elec_df is None or elec_df.empty:
         print("[WARN] Geen nieuwe elektriciteitsprijzen gevonden!")
         elec_out = existing_elec
@@ -201,9 +201,9 @@ def main():
         elec_out = pd.concat([existing_elec, new_elec], ignore_index=True).drop_duplicates(subset='month', keep='last')
         elec_out = elec_out.sort_values('month').reset_index(drop=True)
 
-    # Ophalen ANWB gas (alleen nieuwe data)
+    # Ophalen ANWB gas: maandgrafiek (MONTH), all-in tarief → gebruikt voor compare_prices.csv
     print(f"[INFO] Ophalen all-in gasprijzen (ANWB) vanaf {gas_start.strftime('%Y-%m')}...")
-    gas_df = get_dynamic_gas_prices(start_date=gas_start)
+    gas_df = get_dynamic_gas_prices(start_date=gas_start)  # default interval='MONTH'
     if gas_df is None or gas_df.empty:
         print("[WARN] Geen nieuwe gasprijzen gevonden!")
         gas_out = existing_gas
