@@ -359,3 +359,4 @@
 [2026-04-21T06:56:09.468028] Run: CBS niet bereikbaar – bestaande data ongewijzigd gelaten. Fout: ConnectionError: HTTPSConnectionPool(host='opendata.cbs.nl', port=443): Max retries exceeded with url: /ODataApi/odata/85592NED/TypedDataSet (Caused by NewConnectionError("HTTPSConnection(host='opendata.cbs.nl', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
 [2026-04-22T06:53:49.177135] Run: 63 maanden in compare_prices.csv. Gewijzigd: False
 [2026-04-23T06:57:43.214065] Run: 63 maanden in compare_prices.csv. Gewijzigd: False
+[2026-04-24T07:01:21.554260] Run: 63 maanden in compare_prices.csv. Gewijzigd: False
