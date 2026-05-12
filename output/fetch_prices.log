@@ -377,3 +377,4 @@
 [2026-05-09T07:04:14.720700] Run: CBS niet bereikbaar – bestaande data ongewijzigd gelaten. Fout: ConnectionError: HTTPSConnectionPool(host='opendata.cbs.nl', port=443): Max retries exceeded with url: /ODataApi/odata/85592NED/TypedDataSet (Caused by NewConnectionError("HTTPSConnection(host='opendata.cbs.nl', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
 [2026-05-10T07:23:10.632762] Run: CBS niet bereikbaar – bestaande data ongewijzigd gelaten. Fout: JSONDecodeError: Expecting value: line 1 column 1 (char 0)
 [2026-05-11T08:21:04.984477] Run: CBS niet bereikbaar – bestaande data ongewijzigd gelaten. Fout: JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+[2026-05-12T07:38:51.490075] Run: CBS niet bereikbaar – bestaande data ongewijzigd gelaten. Fout: JSONDecodeError: Expecting value: line 1 column 1 (char 0)
