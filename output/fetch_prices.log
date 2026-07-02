@@ -427,3 +427,4 @@
 [2026-06-29T09:22:26.442670] Run: 65 maanden in compare_prices.csv. Gewijzigd: False
 [2026-06-30T08:24:54.757281] Run: CBS niet bereikbaar – bestaande data ongewijzigd gelaten. Fout: HTTPError: 503 Server Error: Service Unavailable for url: https://opendata.cbs.nl/ODataApi/odata/85592NED/TypedDataSet
 [2026-07-01T08:45:07.403443] Run: 65 maanden in compare_prices.csv. Gewijzigd: False
+[2026-07-02T08:08:33.666726] Run: 65 maanden in compare_prices.csv. Gewijzigd: False
